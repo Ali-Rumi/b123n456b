@@ -1,0 +1,9 @@
+numpy==1.23.5
+pandas
+flask
+websockets
+pandas-ta
+binance-futures-connector
+requests
+websocket-client
+pycryptodome
