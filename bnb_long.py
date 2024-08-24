@@ -13,8 +13,8 @@ client = UMFutures(key=api_key, secret=api_secret)
 
 # Trading parameters
 symbol = 'BNBUSDT'
-usdt_amount = 2.5  # $2.5 USDT
-leverage = 20
+usdt_amount = 6  # $2.5 USDT
+leverage = 1
 take_profit_percent = 0.4
 stop_loss_percent = 0.4
 position_duration = 290  # seconds
