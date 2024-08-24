@@ -67,12 +67,14 @@ class TradingStrategy:
                     self.run_bnb_short()
 
     def check_long_entry(self, ema_5, ema_15, rsi):
-        if ema_5 < ema_15 and rsi > rsi_overbought:
+        # Reversed condition: Enter long when EMA(5) > EMA(15) and RSI < oversold
+        if ema_5 > ema_15 and rsi < rsi_oversold:
             return True
         return False
 
     def check_short_entry(self, ema_5, ema_15, rsi):
-        if ema_5 > ema_15 and rsi < rsi_oversold:
+        # Reversed condition: Enter short when EMA(5) < EMA(15) and RSI > overbought
+        if ema_5 < ema_15 and rsi > rsi_overbought:
             return True
         return False
 
