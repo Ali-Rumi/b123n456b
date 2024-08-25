@@ -59,7 +59,7 @@ def monitor_orders(symbol, tp_order_id, sl_order_id):
 
         time.sleep(3)  # Wait for 3 seconds before checking again
 
-def place_short_trade(stop_loss_percent):
+def place_short_trade(stop_loss_percentage):
     try:
         symbol_info = get_symbol_info(symbol)
         quantity_precision = next(filter(lambda f: f['filterType'] == 'LOT_SIZE', symbol_info['filters']))['stepSize']
@@ -74,7 +74,7 @@ def place_short_trade(stop_loss_percent):
         rounded_quantity = round_step_size(quantity, float(quantity_precision))
 
         take_profit_price = round_step_size(entry_price * (1 - take_profit_percent / 100), float(price_precision))
-        stop_loss_price = round_step_size(entry_price * (1 + stop_loss_percent / 100), float(price_precision))
+        stop_loss_price = stop_loss_percentage
 
         order = client.new_order(
             symbol=symbol,
@@ -113,7 +113,7 @@ def place_short_trade(stop_loss_percent):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Place a short trade with custom stop loss')
-    parser.add_argument('stop_loss_percent', type=float, help='Stop loss percentage')
+    parser.add_argument('stop_loss_percentage', type=float, help='Stop loss percentage')
     args = parser.parse_args()
 
-    place_short_trade(args.stop_loss_percent)
+    place_short_trade(args.stop_loss_percentage)
