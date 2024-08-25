@@ -9,6 +9,7 @@ import json
 from flask import Flask, render_template_string
 from threading import Thread
 import subprocess
+import requests
 
 # Customizable variables
 Timeframe = '5m'
@@ -23,6 +24,23 @@ Pairs = ["BNBUSDT"]
 
 app = Flask(__name__)
 
+def get_historical_klines(symbol, interval, limit):
+    base_url = "https://fapi.binance.com"
+    endpoint = f"/fapi/v1/klines"
+    url = f"{base_url}{endpoint}"
+    
+    params = {
+        "symbol": symbol,
+        "interval": interval,
+        "limit": limit
+    }
+    
+    response = requests.get(url, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise Exception(f"Error fetching historical data: {response.text}")
+
 def calculate_indicators(prices):
     df = pd.DataFrame(prices, columns=['close'])
     df['ema_5'] = ta.ema(df['close'], length=ema_period_5)
@@ -35,6 +53,15 @@ class TradingStrategy:
         self.pairs = pairs
         self.close_prices = {pair: deque(maxlen=ema_period_15) for pair in pairs}
         self.bot_status = "Bot is running..."
+        self.initialize_historical_data()
+
+    def initialize_historical_data(self):
+        for pair in self.pairs:
+            historical_klines = get_historical_klines(pair, Timeframe, ema_period_15)
+            for kline in historical_klines:
+                close_price = float(kline[4])
+                self.close_prices[pair].append(close_price)
+            print(f"Initialized {pair} with {len(self.close_prices[pair])} historical data points")
 
     def run_bnb_long(self):
         try:
@@ -77,8 +104,6 @@ class TradingStrategy:
         if ema_5 < ema_15 and rsi > rsi_overbought:
             return True
         return False
-
-strategy = TradingStrategy(Pairs)
 
 @app.route('/')
 def index():
@@ -135,6 +160,8 @@ def run_flask():
     app.run(host='0.0.0.0', port=8080)
 
 if __name__ == "__main__":
+    strategy = TradingStrategy(Pairs)
     flask_thread = Thread(target=run_flask)
     flask_thread.start()
     asyncio.get_event_loop().run_until_complete(connect_to_binance_futures())
+    
