@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import pandas_ta as ta
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import deque
 import asyncio
 import websockets
@@ -9,6 +9,7 @@ import json
 from flask import Flask, render_template_string
 from threading import Thread
 import subprocess
+import aiohttp
 
 # Customizable variables
 Timeframe = '5m'
@@ -103,8 +104,33 @@ def index():
     '''
     return render_template_string(template, bot_status=strategy.bot_status)
 
+async def fetch_historical_data(pair):
+    timeframe_minutes = int(Timeframe[:-1])
+    end_time = datetime.now()
+    start_time = end_time - timedelta(minutes=timeframe_minutes * (ema_period_15 - 1))
+    
+    url = f"https://api.binance.com/api/v3/klines"
+    params = {
+        "symbol": pair,
+        "interval": Timeframe,
+        "startTime": int(start_time.timestamp() * 1000),
+        "endTime": int(end_time.timestamp() * 1000),
+        "limit": ema_period_15
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, params=params) as response:
+            data = await response.json()
+            
+    close_prices = [float(candle[4]) for candle in data]
+    strategy.close_prices[pair] = deque(close_prices, maxlen=ema_period_15)
+
 async def connect_to_binance_futures():
     uri = f"wss://fstream.binance.com/stream?streams={'/'.join([pair.lower() + '@kline_' + Timeframe for pair in Pairs])}"
+
+    # Fetch historical data before connecting to WebSocket
+    for pair in Pairs:
+        await fetch_historical_data(pair)
 
     async with websockets.connect(uri) as websocket:
         print("Connected to Binance Futures WebSocket")
