@@ -79,7 +79,7 @@ def place_long_trade(stop_loss_percentage):
 
         # Calculate take profit and stop loss prices
         take_profit_price = round_step_size(entry_price * (1 + take_profit_percent / 100), float(price_precision))
-        stop_loss_price = round_step_size(entry_price * (1 - stop_loss_percent / 100), float(price_precision))
+        stop_loss_price = stop_loss_percent
 
         # Place market order
         order = client.new_order(
