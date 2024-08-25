@@ -4,6 +4,7 @@ from binance.error import ClientError
 import math
 import time
 import argparse
+import sys
 
 # API credentials
 api_key = '7D10dWr9jWGLWP5rfAXjcXqijGPveCk5tFhKON3SCyk1hkSZdtq1DOJJv8eaTu01'
