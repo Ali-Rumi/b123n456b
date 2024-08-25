@@ -3,6 +3,7 @@ from binance.um_futures import UMFutures
 from binance.error import ClientError
 import math
 import time
+import argparse
 
 # API credentials
 api_key = '7D10dWr9jWGLWP5rfAXjcXqijGPveCk5tFhKON3SCyk1hkSZdtq1DOJJv8eaTu01'
@@ -13,11 +14,9 @@ client = UMFutures(key=api_key, secret=api_secret)
 
 # Trading parameters
 symbol = 'BNBUSDT'
-usdt_amount = 6  # $2.5 USDT
+usdt_amount = 6  # $6USDT
 leverage = 1
-take_profit_percent = 0.4
-stop_loss_percent = 0.4
-position_duration = 290  # seconds
+take_profit_percent = 0.3
 
 def get_symbol_info(symbol):
     exchange_info = client.exchange_info()
@@ -39,26 +38,8 @@ def cancel_order(symbol, order_id):
     except ClientError as error:
         pass
 
-def close_position(symbol, quantity):
-    try:
-        client.new_order(
-            symbol=symbol,
-            side="SELL",
-            type="MARKET",
-            quantity=quantity
-        )
-    except ClientError as error:
-        pass
-
-def monitor_orders(symbol, tp_order_id, sl_order_id, quantity, start_time):
+def monitor_orders(symbol, tp_order_id, sl_order_id):
     while True:
-        current_time = time.time()
-        if current_time - start_time >= position_duration:
-            cancel_order(symbol, tp_order_id)
-            cancel_order(symbol, sl_order_id)
-            close_position(symbol, quantity)
-            break
-
         open_orders = get_open_orders(symbol)
 
         tp_order_open = any(order['orderId'] == tp_order_id for order in open_orders)
@@ -66,16 +47,19 @@ def monitor_orders(symbol, tp_order_id, sl_order_id, quantity, start_time):
 
         if not tp_order_open and sl_order_open:
             cancel_order(symbol, sl_order_id)
+            print("Take profit hit. Position closed.")
             break
         elif not sl_order_open and tp_order_open:
             cancel_order(symbol, tp_order_id)
+            print("Stop loss hit. Position closed.")
             break
         elif not tp_order_open and not sl_order_open:
+            print("Both orders executed or cancelled. Position closed.")
             break
 
         time.sleep(3)  # Wait for 3 seconds before checking again
 
-def place_long_trade():
+def place_long_trade(stop_loss_percent):
     try:
         # Get symbol information
         symbol_info = get_symbol_info(symbol)
@@ -104,6 +88,7 @@ def place_long_trade():
             type="MARKET",
             quantity=rounded_quantity
         )
+        print(f"Market order placed: {order}")
 
         # Place take profit order
         tp_order = client.new_order(
@@ -115,6 +100,7 @@ def place_long_trade():
             stopPrice=take_profit_price,
             workingType="MARK_PRICE"
         )
+        print(f"Take profit order placed: {tp_order}")
 
         # Place stop loss order
         sl_order = client.new_order(
@@ -126,13 +112,17 @@ def place_long_trade():
             stopPrice=stop_loss_price,
             workingType="MARK_PRICE"
         )
+        print(f"Stop loss order placed: {sl_order}")
 
         # Monitor orders
-        start_time = time.time()
-        monitor_orders(symbol, tp_order['orderId'], sl_order['orderId'], rounded_quantity, start_time)
+        monitor_orders(symbol, tp_order['orderId'], sl_order['orderId'])
 
     except ClientError as error:
-        pass
+        print(f"An error occurred: {error}")
 
 if __name__ == "__main__":
-    place_long_trade()
+    parser = argparse.ArgumentParser(description='Place a long trade with custom stop loss')
+    parser.add_argument('stop_loss_percent', type=float, help='Stop loss percentage')
+    args = parser.parse_args()
+
+    place_long_trade(args.stop_loss_percent)
