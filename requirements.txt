@@ -7,3 +7,4 @@ binance-futures-connector
 requests
 websocket-client
 pycryptodome
+aiohttp
