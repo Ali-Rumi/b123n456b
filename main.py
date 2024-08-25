@@ -11,6 +11,7 @@ from threading import Thread
 import time
 import aiohttp
 import subprocess
+import sys
 
 # Customizable variables
 Timeframe = '1m'
