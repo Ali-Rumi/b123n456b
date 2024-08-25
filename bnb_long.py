@@ -59,7 +59,7 @@ def monitor_orders(symbol, tp_order_id, sl_order_id):
 
         time.sleep(3)  # Wait for 3 seconds before checking again
 
-def place_long_trade(stop_loss_percent):
+def place_long_trade(stop_loss_percentage):
     try:
         # Get symbol information
         symbol_info = get_symbol_info(symbol)
@@ -122,7 +122,7 @@ def place_long_trade(stop_loss_percent):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Place a long trade with custom stop loss')
-    parser.add_argument('stop_loss_percent', type=float, help='Stop loss percentage')
+    parser.add_argument('stop_loss_percentage', type=float, help='Stop loss percentage')
     args = parser.parse_args()
 
-    place_long_trade(args.stop_loss_percent)
+    place_long_trade(args.stop_loss_percentage)
