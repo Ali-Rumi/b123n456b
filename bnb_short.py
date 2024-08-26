@@ -1,4 +1,3 @@
-# Short 300 api
 from binance.um_futures import UMFutures
 from binance.error import ClientError
 import math
@@ -13,11 +12,10 @@ client = UMFutures(key=api_key, secret=api_secret)
 
 # Trading parameters
 symbol = 'BNBUSDT'
-usdt_amount = 2.5
-leverage = 20
+usdt_amount = 6  # $6 USDT
+leverage = 1
 take_profit_percent = 0.4
 stop_loss_percent = 0.4
-position_duration = 295  # seconds
 
 def get_symbol_info(symbol):
     exchange_info = client.exchange_info()
@@ -37,29 +35,10 @@ def cancel_order(symbol, order_id):
     try:
         client.cancel_order(symbol=symbol, orderId=order_id)
     except ClientError as error:
-        pass
+        print(f"Error cancelling order: {error}")
 
-def close_position(symbol, quantity):
-    try:
-        client.new_order(
-            symbol=symbol,
-            side="BUY",  # Buying to close a short position
-            type="MARKET",
-            quantity=quantity
-        )
-    except ClientError as error:
-        pass
-
-def monitor_orders_with_timeout(symbol, tp_order_id, sl_order_id, quantity, timeout):
-    start_time = time.time()
+def monitor_orders(symbol, tp_order_id, sl_order_id):
     while True:
-        current_time = time.time()
-        if current_time - start_time > timeout:
-            cancel_order(symbol, tp_order_id)
-            cancel_order(symbol, sl_order_id)
-            close_position(symbol, quantity)
-            break
-
         open_orders = get_open_orders(symbol)
 
         tp_order_open = any(order['orderId'] == tp_order_id for order in open_orders)
@@ -67,11 +46,14 @@ def monitor_orders_with_timeout(symbol, tp_order_id, sl_order_id, quantity, time
 
         if not tp_order_open and sl_order_open:
             cancel_order(symbol, sl_order_id)
+            print("Take profit triggered. Position closed.")
             break
         elif not sl_order_open and tp_order_open:
             cancel_order(symbol, tp_order_id)
+            print("Stop loss triggered. Position closed.")
             break
         elif not tp_order_open and not sl_order_open:
+            print("Both orders closed. Position may have been manually closed.")
             break
 
         time.sleep(3)  # Wait for 3 seconds before checking again
@@ -99,6 +81,7 @@ def place_short_trade():
             type="MARKET",
             quantity=rounded_quantity
         )
+        print(f"Market order placed: {order}")
 
         tp_order = client.new_order(
             symbol=symbol,
@@ -109,6 +92,7 @@ def place_short_trade():
             stopPrice=take_profit_price,
             workingType="MARK_PRICE"
         )
+        print(f"Take profit order placed: {tp_order}")
 
         sl_order = client.new_order(
             symbol=symbol,
@@ -119,11 +103,12 @@ def place_short_trade():
             stopPrice=stop_loss_price,
             workingType="MARK_PRICE"
         )
+        print(f"Stop loss order placed: {sl_order}")
 
-        monitor_orders_with_timeout(symbol, tp_order['orderId'], sl_order['orderId'], rounded_quantity, position_duration)
+        monitor_orders(symbol, tp_order['orderId'], sl_order['orderId'])
 
     except ClientError as error:
-        pass
+        print(f"An error occurred: {error}")
 
 if __name__ == "__main__":
     place_short_trade()
