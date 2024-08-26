@@ -15,8 +15,8 @@ client = UMFutures(key=api_key, secret=api_secret)
 symbol = 'BNBUSDT'
 usdt_amount = 6  # $6 USDT
 leverage = 1
-take_profit_percent = 0.3
-stop_loss_percent = 0.3
+take_profit_percent = 0.4
+stop_loss_percent = 0.4
 position_duration = 295  # seconds
 
 def get_symbol_info(symbol):
