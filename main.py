@@ -20,21 +20,19 @@ leverage_x = 10
 take_profit = 0.004
 stop_loss = 0.004
 fee_rate = 0.001
-ema_period_5 = 5
-ema_period_15 = 15
-rsi_period = 3
-rsi_overbought = 80
-rsi_oversold = 20
+ema_period_14 = 14
+rsi_period_5 = 5
+rsi_period_9 = 9
 
-Pairs = [ "BNBUSDT" ]
+Pairs = ["BNBUSDT"]
 
 app = Flask(__name__)
 
 def calculate_indicators(prices):
     df = pd.DataFrame(prices, columns=['close'])
-    df['ema_5'] = ta.ema(df['close'], length=ema_period_5)
-    df['ema_15'] = ta.ema(df['close'], length=ema_period_15)
-    df['rsi'] = ta.rsi(df['close'], length=rsi_period)
+    df['ema_14'] = ta.ema(df['close'], length=ema_period_14)
+    df['rsi_5'] = ta.rsi(df['close'], length=rsi_period_5)
+    df['rsi_9'] = ta.rsi(df['close'], length=rsi_period_9)
     return df
 
 class TradingStrategy:
@@ -50,12 +48,12 @@ class TradingStrategy:
         self.total_profit_loss = 0
         self.max_drawdown = 0
         self.lowest_balance = portfolio_balance
-        self.close_prices = {pair: deque(maxlen=ema_period_15) for pair in pairs}
+        self.close_prices = {pair: deque(maxlen=ema_period_14) for pair in pairs}
         self.candle_data = {pair: deque(maxlen=3) for pair in pairs}
         self.pending_long = {pair: False for pair in pairs}
         self.pending_short = {pair: False for pair in pairs}
-        self.last_ema_5 = {pair: None for pair in pairs}
-        self.last_ema_15 = {pair: None for pair in pairs}
+        self.last_rsi_5 = {pair: None for pair in pairs}
+        self.last_rsi_9 = {pair: None for pair in pairs}
 
         self.pair_stats = {pair: {
             'Price': 0,
@@ -95,16 +93,16 @@ class TradingStrategy:
             self.close_prices[pair].append(close_price)
             self.candle_data[pair].append({'open': open_price, 'high': high_price, 'low': low_price, 'close': close_price})
 
-        if len(self.close_prices[pair]) == ema_period_15:
+        if len(self.close_prices[pair]) == ema_period_14:
             indicators = calculate_indicators(list(self.close_prices[pair]))
-            ema_5 = indicators['ema_5'].iloc[-1]
-            ema_15 = indicators['ema_15'].iloc[-1]
-            rsi = indicators['rsi'].iloc[-1]
+            ema_14 = indicators['ema_14'].iloc[-1]
+            rsi_5 = indicators['rsi_5'].iloc[-1]
+            rsi_9 = indicators['rsi_9'].iloc[-1]
 
             if self.positions[pair] is None and is_closed:
-                if self.check_long_entry(pair, ema_5, ema_15, rsi):
+                if self.check_long_entry(pair, close_price, ema_14, rsi_5, rsi_9):
                     self.pending_long[pair] = True
-                elif self.check_short_entry(pair, ema_5, ema_15, rsi):
+                elif self.check_short_entry(pair, close_price, ema_14, rsi_5, rsi_9):
                     self.pending_short[pair] = True
 
             if self.positions[pair] is not None:
@@ -118,19 +116,21 @@ class TradingStrategy:
                     self.open_short_position(pair, timestamp, open_price)
                     self.pending_short[pair] = False
 
-            self.last_ema_5[pair] = ema_5
-            self.last_ema_15[pair] = ema_15
+            self.last_rsi_5[pair] = rsi_5
+            self.last_rsi_9[pair] = rsi_9
 
-    def check_long_entry(self, pair, ema_5, ema_15, rsi):
-        if self.last_ema_5[pair] is not None and self.last_ema_15[pair] is not None:
-            ema_crossover = self.last_ema_5[pair] <= self.last_ema_15[pair] and ema_5 > ema_15
-            return ema_crossover and rsi > rsi_overbought
+    def check_long_entry(self, pair, close_price, ema_14, rsi_5, rsi_9):
+        if self.last_rsi_5[pair] is not None and self.last_rsi_9[pair] is not None:
+            price_above_ema = close_price > ema_14
+            rsi_crossover = self.last_rsi_5[pair] <= self.last_rsi_9[pair] and rsi_5 > rsi_9
+            return price_above_ema and rsi_crossover
         return False
 
-    def check_short_entry(self, pair, ema_5, ema_15, rsi):
-        if self.last_ema_5[pair] is not None and self.last_ema_15[pair] is not None:
-            ema_crossover = self.last_ema_5[pair] >= self.last_ema_15[pair] and ema_5 < ema_15
-            return ema_crossover and rsi < rsi_oversold
+    def check_short_entry(self, pair, close_price, ema_14, rsi_5, rsi_9):
+        if self.last_rsi_5[pair] is not None and self.last_rsi_9[pair] is not None:
+            price_below_ema = close_price < ema_14
+            rsi_crossover = self.last_rsi_5[pair] >= self.last_rsi_9[pair] and rsi_5 < rsi_9
+            return price_below_ema and rsi_crossover
         return False
 
     def open_long_position(self, pair, timestamp, price):
@@ -310,7 +310,7 @@ async def connect_to_binance_futures():
 
     # Fetch initial data points for each pair
     for pair in Pairs:
-        historical_data = get_historical_klines(pair, Timeframe, ema_period_15)
+        historical_data = get_historical_klines(pair, Timeframe, 13)  # Get last 13 data points
         strategy.close_prices[pair].extend(historical_data)
 
     async with websockets.connect(uri) as websocket:
@@ -366,4 +366,3 @@ if __name__ == "__main__":
     flask_thread = Thread(target=run_flask)
     flask_thread.start()
     asyncio.get_event_loop().run_until_complete(connect_to_binance_futures())
-            
