@@ -13,7 +13,7 @@ import requests
 import subprocess
 
 # Customizable variables
-Timeframe = '5m'
+Timeframe = '1m'
 portfolio_balance = 1000
 trade_amount = 10
 leverage_x = 10
